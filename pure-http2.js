@@ -10,20 +10,30 @@ const {
 const server = http2.createServer();
 server.on("error", (err) => console.error(err));
 
-server.on("stream", (stream, headers) => {
-  stream.respond({
+server.on("stream", (serverStream, headers, flags) => {
+  serverStream.respond({
     [HTTP2_HEADER_CONTENT_TYPE]: "text/html; charset=utf-8",
     [HTTP2_HEADER_STATUS]: 200,
   });
 
   const sendData = () => {
     const data = `Current Time: ${new Date().toISOString()}\n`;
-    stream.write(data);
+    serverStream.write(data);
   };
 
-  const intervalId = setInterval(sendData, 2);
+  const intervalId = setInterval(sendData, 1);
 
-  stream.on("close", () => {
+  console.log("server stream.id: %o", serverStream.id);
+
+  serverStream.on("aborted", () => {
+    // console.error("aborted");
+  });
+
+  serverStream.on("error", (err) => {
+    console.error("error: %o", err);
+  });
+
+  serverStream.on("close", () => {
     // console.log("close");
     clearInterval(intervalId);
   });
@@ -37,42 +47,44 @@ function makeRequest(client) {
     const controller = new AbortController();
     const signal = controller.signal;
 
-    const req = useAbortController
+    const clientStream = useAbortController
       ? client.request({ [HTTP2_HEADER_PATH]: "/" }, { signal })
       : client.request({ [HTTP2_HEADER_PATH]: "/" });
 
-    req.end();
+    console.log("client stream.id: %o", clientStream.id);
+
+    clientStream.end();
 
     let counter = 0;
-    req.on("response", (headers) => {
+    clientStream.on("response", (headers) => {
       // for (const name in headers) {
       //   console.log(`${name}: ${headers[name]}`);
       // }
-
-      req.on("data", (chunk) => {
-        counter += 1;
-        // process.stdout.write(chunk);
-      });
-
-      req.on("error", (err) => {
-        if (err instanceof Error && err.name === "AbortError") {
-          resolve();
-        } else {
-          reject(err);
-          console.error(err);
-        }
-      });
-
-      req.on("end", () => {
-        resolve();
-      });
-
-      setTimeout(() => {
-        // console.log(`Cancelling request after ${counter} messages`);
-        if (useAbortController) controller.abort();
-        else req.close(NGHTTP2_CANCEL);
-      }, 5);
     });
+
+    clientStream.on("data", (chunk) => {
+      counter += 1;
+      // process.stdout.write(chunk);
+    });
+
+    clientStream.on("error", (err) => {
+      if (err instanceof Error && err.name === "AbortError") {
+        resolve();
+      } else {
+        reject(err);
+        console.error(err);
+      }
+    });
+
+    clientStream.on("end", () => {
+      resolve();
+    });
+
+    setTimeout(() => {
+      // console.log(`Cancelling request after ${counter} messages`);
+      if (useAbortController) controller.abort();
+      else clientStream.close(NGHTTP2_CANCEL);
+    }, 3);
   });
 }
 
@@ -84,11 +96,10 @@ server.listen(PORT, async () => {
   client.on("error", (err) => console.error(err));
   client.on("close", () => console.log("Session closed"));
   client.on("goaway", (errorCode, lastStreamId) =>
-    console.log(`Goaway: ${errorCode}, ${lastStreamId}`)
+    console.log(` Goaway: ${errorCode}, ${lastStreamId}`)
   );
 
   for (let i = 1; i <= 10000; i++) {
-    process.stdout.write(`\r${i}`);
     await makeRequest(client);
     // comment this line to see the issue:
     // 'Received RST_STREAM with code 2 triggered by internal client error: Session closed with error code 2'
@@ -99,3 +110,7 @@ server.listen(PORT, async () => {
   client.close();
   server.close();
 });
+
+
+// run with node pure-http2.js      
+// or with NODE_DEBUG_NATIVE=* NODE_DEBUG=* node pure-http2.js
