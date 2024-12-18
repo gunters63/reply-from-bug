@@ -1,21 +1,3 @@
-/*
- *
- * Copyright 2023 gRPC authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
-
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 
@@ -32,21 +14,23 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 const echoProto =
   grpc.loadPackageDefinition(packageDefinition).grpc.examples.echo;
 
-function bidirectionalStreamingEcho(call) {
-  call.on("data", (value) => {
-    const message = value.message;
-    call.write({ message: message });
-  });
-  // Either 'end' or 'cancelled' will be emitted when the call is cancelled
+function serverStreamingEcho(call) {
+  const timer = setInterval(() => {
+    call.write({ message: "hello" });
+  }, 1);
   call.on("end", () => {
+    // console.log("end");
+    clearInterval(timer);
     call.end();
   });
   call.on("cancelled", () => {
+    // console.log("cancelled");
+    clearInterval(timer);
   });
 }
 
 const serviceImplementation = {
-  bidirectionalStreamingEcho,
+  serverStreamingEcho,
 };
 
 function startServer() {
@@ -71,18 +55,17 @@ function startServer() {
 }
 
 function callServer(client) {
-  return new Promise((resolve, reject) => {
-    const call = client.bidirectionalStreamingEcho();
-    const EXPECTED_MESSAGES = 5;
+  const promise = new Promise((resolve, reject) => {
+    const call = client.serverStreamingEcho({ message: "hello" });
     let receivedMessages = 0;
     call.on("data", (value) => {
       receivedMessages += 1;
-      if (receivedMessages >= EXPECTED_MESSAGES) {
-        call.cancel();
-      }
     });
     call.on("status", (status) => {
-      if (status.code === grpc.status.OK || status.code === grpc.status.CANCELLED) {
+      if (
+        status.code === grpc.status.OK ||
+        status.code === grpc.status.CANCELLED
+      ) {
         resolve();
       } else {
         reject(status);
@@ -91,11 +74,12 @@ function callServer(client) {
     call.on("error", () => {
       // Ignore error event
     });
-    for (let i = 0; i < EXPECTED_MESSAGES; i++) {
-      call.write({ message: `hello: ${i.toString()}` });
-    }
-    call.end();
+    setTimeout(() => {
+      // console.log("cancelling call, %d messages received", receivedMessages);
+      call.cancel();
+    }, 10);
   });
+  return promise;
 }
 
 async function main() {
@@ -105,11 +89,11 @@ async function main() {
     grpc.credentials.createInsecure()
   );
   for (let i = 1; i <= 10000; i++) {
-    process.stdout.write(`\r${i}`)
+    process.stdout.write(`\r${i}`);
     await callServer(client);
-    // remove this line to see the issue: 
+    // comment this line to see the issue:
     // 'Received RST_STREAM with code 2 triggered by internal client error: Session closed with error code 2'
-    // after exactly 1002 iterations
+    // after about 1500 iterations
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
   console.log("\ndone");
