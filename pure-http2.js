@@ -23,7 +23,7 @@ server.on("stream", (serverStream, headers, flags) => {
 
   const intervalId = setInterval(sendData, 1);
 
-  console.log("server stream.id: %o", serverStream.id);
+  // console.log("server stream.id: %o", serverStream.id);
 
   serverStream.on("aborted", () => {
     // console.error("aborted");
@@ -51,7 +51,7 @@ function makeRequest(client) {
       ? client.request({ [HTTP2_HEADER_PATH]: "/" }, { signal })
       : client.request({ [HTTP2_HEADER_PATH]: "/" });
 
-    console.log("client stream.id: %o", clientStream.id);
+    // console.log("client stream.id: %o", clientStream.id);
 
     clientStream.end();
 
@@ -100,10 +100,11 @@ server.listen(PORT, async () => {
   );
 
   for (let i = 1; i <= 10000; i++) {
+    process.stdout.write(`\r${i}`)
     await makeRequest(client);
     // comment this line to see the issue:
     // 'Received RST_STREAM with code 2 triggered by internal client error: Session closed with error code 2'
-    // after about 1200 iterations
+    // after about 1000-1200 iterations
     // await new Promise((resolve) => setTimeout(resolve, 10));
   }
 
