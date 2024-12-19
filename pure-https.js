@@ -1,4 +1,6 @@
 import http2 from "node:http2";
+import https from "node:https";
+import fs from 'node:fs';
 
 const {
   NGHTTP2_CANCEL,
@@ -7,7 +9,13 @@ const {
   HTTP2_HEADER_CONTENT_TYPE,
 } = http2.constants;
 
-const server = http2.createServer({ streamResetBurst: Number.MAX_SAFE_INTEGER, streamResetRate: Number.MAX_SAFE_INTEGER });
+const server = http2.createSecureServer({
+  key: fs.readFileSync("agent1-key.pem"),
+  cert: fs.readFileSync("agent1-cert.pem"),
+  streamResetBurst: Number.MAX_SAFE_INTEGER,
+  streamResetRate: Number.MAX_SAFE_INTEGER,
+});
+
 server.on("error", (err) => console.error(err));
 
 server.on("stream", (serverStream, headers, flags) => {
@@ -90,9 +98,11 @@ function makeRequest(client) {
 
 const PORT = 3000;
 server.listen(PORT, async () => {
-  console.log(`HTTP/2 server is running on http://localhost:${PORT}`);
+  console.log(`HTTP/2 server is running on https://localhost:${PORT}`);
 
-  const client = http2.connect(`http://localhost:${PORT}`);
+  const client = http2.connect(`https://localhost:${PORT}`, {
+    rejectUnauthorized: false
+  });
   client.on("error", (err) => console.error(err));
   client.on("close", () => console.log("Session closed"));
   client.on("goaway", (errorCode, lastStreamId) =>
