@@ -94,7 +94,7 @@ async function main() {
     // comment this line to see the issue:
     // 'Received RST_STREAM with code 2 triggered by internal client error: Session closed with error code 2'
     // after about 1500 iterations
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    // await new Promise((resolve) => setTimeout(resolve, 5));
   }
   console.log("\ndone");
 }

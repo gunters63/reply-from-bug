@@ -1,0 +1,56 @@
+diff --git a/build/src/server.js b/build/src/server.js
+index 4cdb141ad175f05aeda40c6e2982d7317ee578e1..3a1d64f7abd7031a60b53d49b3245454df6c741f 100644
+--- a/build/src/server.js
++++ b/build/src/server.js
+@@ -329,7 +329,11 @@ let Server = (() => {
+                 let http2Server;
+                 if (credentials._isSecure()) {
+                     const credentialsSettings = credentials._getSettings();
+-                    const secureServerOptions = Object.assign(Object.assign(Object.assign({}, this.commonServerOptions), credentialsSettings), { enableTrace: this.options['grpc-node.tls_enable_trace'] === 1 });
++                    const secureServerOptions = Object.assign(Object.assign(Object.assign({}, this.commonServerOptions), credentialsSettings), { 
++                        // @ts-ignore
++                        streamResetBurst: Number.MAX_SAFE_INTEGER, 
++                        // @ts-ignore
++                        streamResetRate: Number.MAX_SAFE_INTEGER, enableTrace: this.options['grpc-node.tls_enable_trace'] === 1 });
+                     let areCredentialsValid = credentialsSettings !== null;
+                     http2Server = http2.createSecureServer(secureServerOptions);
+                     http2Server.on('connection', (socket) => {
+@@ -356,7 +360,11 @@ let Server = (() => {
+                     });
+                 }
+                 else {
+-                    http2Server = http2.createServer(this.commonServerOptions);
++                    http2Server = http2.createServer(Object.assign(Object.assign({}, this.commonServerOptions), { 
++                        // @ts-ignore
++                        streamResetBurst: Number.MAX_SAFE_INTEGER, 
++                        // @ts-ignore
++                        streamResetRate: Number.MAX_SAFE_INTEGER }));
+                 }
+                 http2Server.setTimeout(0, noop);
+                 this._setupHandlers(http2Server, credentials._getInterceptors());
+diff --git a/src/server.ts b/src/server.ts
+index cb60943ceb94e77361827146127d02448a163578..d418597b2391c9c6e5cb47934a73bbc2d4b596fa 100644
+--- a/src/server.ts
++++ b/src/server.ts
+@@ -569,6 +569,8 @@ export class Server {
+       const secureServerOptions: http2.SecureServerOptions = {
+         ...this.commonServerOptions,
+         ...credentialsSettings,
++        streamResetBurst: Number.MAX_SAFE_INTEGER,
++        streamResetRate: Number.MAX_SAFE_INTEGER,     
+         enableTrace: this.options['grpc-node.tls_enable_trace'] === 1
+       };
+       let areCredentialsValid = credentialsSettings !== null;
+@@ -598,7 +600,11 @@ export class Server {
+         credentials._removeWatcher(credsWatcher);
+       });
+     } else {
+-      http2Server = http2.createServer(this.commonServerOptions);
++      http2Server = http2.createServer({
++        ...this.commonServerOptions,
++        streamResetBurst: Number.MAX_SAFE_INTEGER,
++        streamResetRate: Number.MAX_SAFE_INTEGER
++      });
+     }
+ 
+     http2Server.setTimeout(0, noop);
