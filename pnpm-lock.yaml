@@ -14,19 +14,19 @@ importers:
   .:
     dependencies:
       '@fastify/http-proxy':
-        specifier: ^11.0.0
+        specifier: 11.0.0
         version: 11.0.0
       '@fastify/reply-from':
-        specifier: ^12.0.0
+        specifier: 12.0.0
         version: 12.0.0
       '@grpc/grpc-js':
-        specifier: ^1.12.4
+        specifier: 1.12.5
         version: 1.12.5(patch_hash=7jowoe5l7hwweodjb7nfqhndnu)
       '@grpc/proto-loader':
-        specifier: ^0.7.13
+        specifier: 0.7.13
         version: 0.7.13
       fastify:
-        specifier: ^5.2.0
+        specifier: 5.2.0
         version: 5.2.0
 
 packages:
