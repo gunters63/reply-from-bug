@@ -1,5 +1,4 @@
 import http2 from "node:http2";
-import https from "node:https";
 import fs from 'node:fs';
 
 const {
@@ -12,10 +11,10 @@ const {
 const server = http2.createSecureServer({
   key: fs.readFileSync("agent1-key.pem"),
   cert: fs.readFileSync("agent1-cert.pem"),
+  // Comment these two lines to see the issue
   streamResetBurst: Number.MAX_SAFE_INTEGER,
   streamResetRate: Number.MAX_SAFE_INTEGER,
 });
-
 server.on("error", (err) => console.error(err));
 
 server.on("stream", (serverStream, headers, flags) => {
@@ -122,5 +121,5 @@ server.listen(PORT, async () => {
   server.close();
 });
 
-// run with node pure-http2.js
-// or with NODE_DEBUG_NATIVE=* NODE_DEBUG=* node pure-http2.js
+// run with node pure-https.mjs
+// or with NODE_DEBUG_NATIVE=TLS,HTTP2 NODE_DEBUG=NET,HTTP2,TLS node pure-https.mjs

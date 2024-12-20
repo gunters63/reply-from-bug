@@ -7,7 +7,11 @@ const {
   HTTP2_HEADER_CONTENT_TYPE,
 } = http2.constants;
 
-const server = http2.createServer({ streamResetBurst: Number.MAX_SAFE_INTEGER, streamResetRate: Number.MAX_SAFE_INTEGER });
+const server = http2.createServer({
+  // Comment these two lines to see the issue
+  streamResetBurst: Number.MAX_SAFE_INTEGER,
+  streamResetRate: Number.MAX_SAFE_INTEGER,
+});
 server.on("error", (err) => console.error(err));
 
 server.on("stream", (serverStream, headers, flags) => {
@@ -112,5 +116,5 @@ server.listen(PORT, async () => {
   server.close();
 });
 
-// run with node pure-http2.js
-// or with NODE_DEBUG_NATIVE=* NODE_DEBUG=* node pure-http2.js
+// run with node pure-http2.mjs
+// or with NODE_DEBUG_NATIVE=TLS,HTTP2 NODE_DEBUG=NET,HTTP2,TLS node pure-http2.mjs

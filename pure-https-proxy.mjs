@@ -12,7 +12,7 @@ const {
 
 const TARGET_PORT = 3000;
 const PROXY_PORT = 3001;
-const httpsOptions = {
+const proxyHttpsOptions = {
   allowHTTP1: true,
   key: fs.readFileSync("agent1-key.pem"),
   cert: fs.readFileSync("agent1-cert.pem"),
@@ -28,7 +28,7 @@ const httpsOptions = {
 
 const proxy = Fastify({
   http2: true,
-  https: httpsOptions,
+  https: proxyHttpsOptions,
   exposeHeadRoutes: false,
 });
 proxy.register(fastifyHttpProxy, {
@@ -59,7 +59,7 @@ proxy.register(fastifyHttpProxy, {
 });
 
 await proxy.listen({ port: PROXY_PORT });
-console.log(`Proxy server is running on https://localhost:${PROXY_PORT}`);
+console.log(`proxy server is running on https://localhost:${PROXY_PORT}`);
 
 const server = http2.createSecureServer({
   key: fs.readFileSync("agent1-key.pem"),
@@ -174,5 +174,5 @@ server.listen(TARGET_PORT, async () => {
   proxy.close();
 });
 
-// run with node pure-http2-proxy.js
-// or with NODE_DEBUG_NATIVE=* NODE_DEBUG=* node pure-http2-proxy.js
+// run with node pure-http2-proxy.mjs
+// or with NODE_DEBUG_NATIVE=TLS,HTTP2 NODE_DEBUG=NET,HTTP2,TLS node pure-http2-proxy.mjs
