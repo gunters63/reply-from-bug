@@ -9,8 +9,8 @@ const {
 } = http2.constants;
 
 const server = http2.createSecureServer({
-  key: fs.readFileSync("agent1-key.pem"),
-  cert: fs.readFileSync("agent1-cert.pem"),
+  key: fs.readFileSync("server.crt"),
+  cert: fs.readFileSync("server.crt"),
   // Comment these two lines to see the issue
   streamResetBurst: Number.MAX_SAFE_INTEGER,
   streamResetRate: Number.MAX_SAFE_INTEGER,

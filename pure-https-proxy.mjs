@@ -12,10 +12,14 @@ const {
 
 const TARGET_PORT = 3000;
 const PROXY_PORT = 3001;
+
+const key = fs.readFileSync("server.key");
+const cert = fs.readFileSync("server.crt");
+
 const proxyHttpsOptions = {
   allowHTTP1: true,
-  key: fs.readFileSync("agent1-key.pem"),
-  cert: fs.readFileSync("agent1-cert.pem"),
+  key,
+  cert,
   // NodeJs since Oct 23 has rate limiting for suspected RST attacks
   // See: https://cloud.google.com/blog/products/identity-security/how-it-works-the-novel-http2-rapid-reset-ddos-attack
   // and https://github.com/nodejs/node/pull/50121/files#diff-93eb98470022892511c0a690d96895ce7a994feedfe289ba7cd92423734aa30d
@@ -62,8 +66,8 @@ await proxy.listen({ port: PROXY_PORT });
 console.log(`proxy server is running on https://localhost:${PROXY_PORT}`);
 
 const server = http2.createSecureServer({
-  key: fs.readFileSync("agent1-key.pem"),
-  cert: fs.readFileSync("agent1-cert.pem"),
+  key,
+  cert,
   streamResetBurst: Number.MAX_SAFE_INTEGER,
   streamResetRate: Number.MAX_SAFE_INTEGER,
 });

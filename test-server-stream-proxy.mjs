@@ -6,11 +6,13 @@ import fastifyHttpProxy from "@fastify/http-proxy";
 
 const __dirname = import.meta.dirname;
 const PROTO_PATH = __dirname + "/protos/echo.proto";
+
 const TARGET_PORT = 3000;
 const PROXY_PORT = 3001;
 
-const key = fs.readFileSync("agent1-key.pem");
-const cert = fs.readFileSync("agent1-cert.pem");
+const key = fs.readFileSync("server.key");
+const cert = fs.readFileSync("server.crt");
+const ca = fs.readFileSync("rootCA.pem");
 
 const proxyHttpsOptions = {
   allowHTTP1: true,
@@ -22,8 +24,8 @@ const proxyHttpsOptions = {
   // This mitigation fix is included in Node since 18.18.2, 20.8.1, 21.0 (around Oct 13 2023)
   // Since we have to resort to server-side streaming and our only way to cancel a streaming call is to abort the connection client-side
   // we have to disable this feature
-  streamResetBurst: Number.MAX_SAFE_INTEGER,
-  streamResetRate: Number.MAX_SAFE_INTEGER,
+  // streamResetBurst: Number.MAX_SAFE_INTEGER,
+  // streamResetRate: Number.MAX_SAFE_INTEGER,
 };
 
 const proxy = Fastify({
@@ -35,7 +37,7 @@ proxy.register(fastifyHttpProxy, {
   disableRequestLogging: true,
   retryMethods: [],
   upstream: `https://localhost:${TARGET_PORT}`, // forward to target server
-  http2: { requestTimeout: 0, sessionTimeout: 0 }
+  http2: { requestTimeout: 0, sessionTimeout: 0 },
 });
 
 await proxy.listen({ port: PROXY_PORT });
@@ -85,7 +87,7 @@ function startServer() {
           reject(error);
         } else {
           console.log(`grpc target server listening on ${p}`);
-          resolve();
+          resolve(server);
         }
       }
     );
@@ -121,10 +123,10 @@ function callServer(client) {
 }
 
 async function main() {
-  await startServer();
+  const server = await startServer();
   const client = new echoProto.Echo(
     `localhost:${TARGET_PORT}`,
-    grpc.credentials.createInsecure()
+    grpc.credentials.createSsl(ca)
   );
   for (let i = 1; i <= 10000; i++) {
     process.stdout.write(`\r${i}`);
@@ -134,6 +136,14 @@ async function main() {
     // after about 1500 iterations
     // await new Promise((resolve) => setTimeout(resolve, 5));
   }
+  client.close();
+  await new Promise((resolve, reject) => {
+    server.tryShutdown((error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+
   console.log("\ndone");
 }
 
